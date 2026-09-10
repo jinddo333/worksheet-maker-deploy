@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>시지각 추적 & 자모음 쓰기장 (정렬 최적화 완결판)</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&display=swap');
+
+        body {
+            font-family: 'Nanum Gothic', sans-serif; margin: 0; padding: 20px;
+            background-color: #f4f4f9; background-image: url('image_0.png');
+            background-size: cover; background-position: center center;
+            background-repeat: no-repeat; background-attachment: fixed; color: #333;
+        }
+
+        .controls {
+            background-color: rgba(255, 255, 255, 0.95); padding: 20px;
+            border-radius: 8px; border: 1px solid #ddd; max-width: 900px;
+            margin: 0 auto 20px auto; box-shadow: 0 4px 10px rgba(0,0,0,0.2); text-align: center;
+        }
+
+        .title-image-container { margin-bottom: 20px; text-align: center; }
+        .title-image { width: 16cm; height: 4cm; object-fit: contain; }
+        .info-text { font-size: 14px; color: #d35400; font-weight: bold; margin-bottom: 20px; line-height: 1.5; }
+
+        .input-group { margin-bottom: 15px; padding: 15px; background-color: rgba(249, 249, 249, 0.9); border: 1px dashed #bbb; border-radius: 6px; text-align: left; display: flex; gap: 15px;}
+        .input-group-half { flex: 1; }
+        .input-group label { font-weight: bold; display: block; margin-bottom: 8px; color: #333; }
+        select { width: 100%; font-size: 14px; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+
+        .word-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; background-color: #fff; padding: 10px; border: 1px dashed #bbb; border-radius: 6px; min-height: 60px;}
+        
+        .input-answer { flex: 1; padding: 8px; font-size: 15px; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; text-align: center; border-left: 4px solid #2980b9; }
+
+        .row-paste-zone {
+            flex: 1.5; height: 45px; border: 2px dashed #3498db; border-radius: 4px; background-color: #f0f8ff; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            cursor: pointer; transition: 0.2s; position: relative; padding: 5px; overflow: hidden;
+        }
+        .row-paste-zone:focus { border-color: #e74c3c; background-color: #fdf5f6; outline: none; box-shadow: 0 0 8px rgba(231, 76, 60, 0.3); }
+        .row-paste-zone span { font-size: 11px; color: #2980b9; font-weight: bold; pointer-events: none; text-align: center; line-height: 1.3; }
+        
+        .preview-area { display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; position: absolute; top: 0; left: 0; background: #f0f8ff; pointer-events: none; }
+        .row-preview { max-width: 45px; max-height: 45px; object-fit: contain; border-radius: 4px; border: 1px solid #ccc; cursor: pointer; background: #fff; display: none; pointer-events: auto; }
+
+        button { padding: 8px 15px; font-size: 15px; cursor: pointer; border: none; border-radius: 4px; transition: 0.3s; color: white; font-weight: bold; }
+        .btn-add { background-color: #27ae60; }
+        .btn-remove { background-color: #e74c3c; padding: 0 15px; height: 40px; align-self: center; display: flex; align-items: center; justify-content: center; }
+        .btn-generate { background-color: #2980b9; width: 100%; padding: 15px; font-size: 18px; margin-top: 10px; }
+        
+        #printActionArea { text-align: center; margin-bottom: 20px; display: none; }
+        .btn-print { background-color: #d35400; padding: 15px 30px; font-size: 18px; }
+
+        .a4-preview {
+            width: 20.4cm; height: 29.1cm; margin: 0 auto; background-color: white;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3); display: none; flex-direction: column;
+            box-sizing: border-box; overflow: hidden; position: relative;
+        }
+        .print-header { width: 100%; height: 3cm; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; box-sizing: border-box; background-color: rgba(0,0,0,0.02); }
+        .header-bg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: contain; z-index: 1; }
+        .header-text-container { display: flex; flex-direction: column; align-items: center; width: 70%; z-index: 20; }
+        .print-footer { width: 100%; height: 1.5cm; position: relative; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
+        .footer-bg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: contain; z-index: 1; }
+        .transparent-input { background: rgba(255,255,255,0.7); border: 1px dashed #3498db; text-align: center; font-family: 'Nanum Gothic', sans-serif; color: #000; box-sizing: border-box; }
+        .transparent-input:focus { outline: none; background: #fff; border: 1px dashed #e74c3c; }
+        .input-title { font-size: 32px; font-weight: bold; width: 100%; padding: 2px; margin-bottom: 5px; }
+        .input-subtitle { font-size: 16px; font-weight: bold; color: #555; width: 100%; padding: 2px; }
+        .input-footer { position: relative; z-index: 10; font-size: 14px; font-weight: bold; width: 80%; padding: 2px; }
+
+        .print-main { 
+            width: 100%; height: calc(29.1cm - 4.5cm); display: flex; 
+            padding: 20px 10px; box-sizing: border-box; position: relative; 
+        }
+        .col-left { flex: 1; display: flex; flex-direction: column; justify-content: space-around; align-items: center; z-index: 10; }
+        .col-mid { flex: 2; position: relative; z-index: 5; }
+        .col-right { flex: 1; display: flex; flex-direction: column; justify-content: space-around; align-items: center; z-index: 10; }
+
+        .item-box { width: 90%; height: 18%; display: flex; align-items: center; justify-content: center; position: relative; }
+        .item-box img { max-width: 90%; max-height: 90%; object-fit: contain; border: 2px solid #333; border-radius: 8px; padding: 5px; background: #fff;}
+        
+        .node-left { position: absolute; right: -10px; width: 12px; height: 12px; background-color: #333; border-radius: 50%; }
+        .node-right { position: absolute; left: -10px; width: 12px; height: 12px; background-color: #333; border-radius: 50%; }
+
+        .write-container { display: grid; gap: 5px; width: 100%; justify-content: center; }
+        .write-box { background-image: url('image_4.png'); background-size: 100% 100%; display: inline-block; margin: 0; }
+
+        #lineCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+
+        @media print {
+            @page { size: A4 portrait; margin: 3mm; }
+            body { background-image: none !important; background-color: #ffffff !important; margin: 0; padding: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .controls, #printActionArea { display: none !important; }
+            .a4-preview { box-shadow: none !important; margin: 0 !important; width: 100% !important; height: 100% !important; display: flex !important; }
+            .print-header { background-color: transparent !important; }
+            .transparent-input { border: none !important; background: transparent !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <div class="title-image-container">
+            <img src="image_3.png" alt="타이틀" class="title-image">
+        </div>
+        
+        <div class="input-group">
+            <div class="input-group-half">
+                <label>1. 시각적 단서 옵션</label>
+                <select id="lineDifficulty">
+                    <option value="color">하: 다채로운 색깔 (추적 쉬움)</option>
+                    <option value="thickness">중: 선 굵기 차이 (형태적 단서)</option>
+                    <option value="pattern">상: 점선/파선 섞임 (시각적 간섭)</option>
+                    <option value="black" selected>최상: 모두 같은 검은 선</option>
+                </select>
+            </div>
+            <div class="input-group-half">
+                <label>2. 난화(무작위성) 강도 선택</label>
+                <select id="tangleLevel">
+                    <option value="1">1단계: 깔끔한 완만 곡선</option>
+                    <option value="2">2단계: 중간 수준의 불규칙 꺾임 (적당한 꼬임)</option>
+                    <option value="3" selected>3단계: 극강의 불규칙 난화 (사람 낙서 모드)</option>
+                </select>
+            </div>
+        </div>
+
+        <p class="info-text">
+            ※ 1~3글자 단어만 허용됩니다. (공간 확보 목적)<br>
+            ※ 난화 적용 시 선이 마구 얽히지만 절대 사진/답 구역을 침범하지 않습니다.
+        </p>
+        
+        <div id="wordList"></div>
+        <button class="btn-add" onclick="addRow()">+ 문항 추가 (최대 5개)</button>
+        <button class="btn-generate" onclick="generateTracking()">📝 추적 쓰기장 만들기</button>
+    </div>
+
+    <div id="printActionArea">
+        <button class="btn-print" onclick="window.print()">🖨️ 깔끔하게 인쇄하기</button>
+    </div>
+
+    <div class="a4-preview" id="outputArea">
+        <header class="print-header">
+            <img src="image_1.png" class="header-bg" alt="머리말 배경">
+            <div class="header-text-container">
+                <input type="text" class="transparent-input input-title" value="선을 따라가서 써보아요">
+                <input type="text" class="transparent-input input-subtitle" value="알맞은 낱말을 찾아 또박또박 써봅시다.">
+            </div>
+        </header>
+
+        <main class="print-main">
+            <div class="col-left" id="colLeft"></div>
+            <div class="col-mid">
+                <svg id="lineCanvas"></svg>
+            </div>
+            <div class="col-right" id="colRight"></div>
+        </main>
+
+        <footer class="print-footer">
+            <img src="image_2.png" class="footer-bg" alt="꼬리말 배경">
+            <input type="text" class="transparent-input input-footer" value="여기에 꼬리말 내용을 입력하세요">
+        </footer>
+    </div>
+
+    <script>
+        const MAX_ROWS = 5; 
+        let globalId = 0;
+
+        window.onload = function() { 
+            addRow();
+            document.getElementById('answer_1').value = "사과";
+            setRowImageUrl(1, getEmojiDataURL("🍎"));
+
+            addRow();
+            document.getElementById('answer_2').value = "포도";
+            setRowImageUrl(2, getEmojiDataURL("🍇"));
+
+            addRow();
+            document.getElementById('answer_3').value = "바나나";
+            setRowImageUrl(3, getEmojiDataURL("🍌"));
+
+            addRow();
+            document.getElementById('answer_4').value = "기차";
+            setRowImageUrl(4, getEmojiDataURL("🚂"));
+        };
+
+        function getEmojiDataURL(emoji) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 150; canvas.height = 150;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = "#fff"; 
+            ctx.fillRect(0, 0, 150, 150);
+            ctx.font = "80px sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(emoji, 75, 85);
+            return canvas.toDataURL('image/png');
+        }
+
+        function setRowImageUrl(id, url) {
+            const preview = document.getElementById(`preview_${id}`);
+            const text = document.getElementById(`text_${id}`);
+            if(preview && text) {
+                preview.src = url;
+                preview.style.display = 'block';
+                text.style.display = 'none';
+            }
+        }
+
+        function addRow() {
+            if (document.querySelectorAll('.word-row').length >= MAX_ROWS) { alert("쾌적한 선 긋기를 위해 최대 5개까지만 권장합니다."); return; }
+            globalId++;
+            const id = globalId;
+
+            const list = document.getElementById('wordList');
+            const row = document.createElement('div');
+            row.className = 'word-row';
+            row.id = `row_${id}`;
+            row.innerHTML = `
+                <div class="row-paste-zone" id="zone_${id}" tabindex="0" onclick="this.focus()" ondblclick="document.getElementById('file_${id}').click()">
+                    <span id="text_${id}">📸 1번클릭 후 Ctrl+V<br>(문제용 사진 1장)</span>
+                    <div class="preview-area">
+                        <img id="preview_${id}" class="row-preview" src="" title="클릭하여 삭제">
+                    </div>
+                </div>
+                <input type="file" id="file_${id}" accept="image/*" style="display: none;" onchange="handleRowFile(this.files, ${id})">
+                <input type="text" class="input-answer" id="answer_${id}" placeholder="정답 (1~3글자)">
+                <button class="btn-remove" onclick="removeRow(${id})">X</button>
+            `;
+            list.appendChild(row);
+
+            const previewImg = document.getElementById(`preview_${id}`);
+            previewImg.onclick = function(e) {
+                e.stopPropagation();
+                this.src = '';
+                this.style.display = 'none';
+                document.getElementById(`text_${id}`).style.display = 'block';
+            };
+        }
+
+        function removeRow(id) {
+            if (document.querySelectorAll('.word-row').length <= 2) { alert("선 긋기를 하려면 최소 2개의 문항이 필요합니다."); return; }
+            document.getElementById(`row_${id}`).remove();
+        }
+
+        function handleRowFile(files, id) {
+            if (files.length === 0) return;
+            const file = files[0];
+            if (file.type.startsWith('image/')) {
+                const url = URL.createObjectURL(file);
+                setRowImageUrl(id, url);
+            }
+        }
+
+        document.addEventListener('paste', function(e) {
+            const activeEl = document.activeElement;
+            if (activeEl && activeEl.classList.contains('row-paste-zone')) {
+                if (e.clipboardData && e.clipboardData.files.length > 0) { 
+                    e.preventDefault(); 
+                    const id = activeEl.id.split('_')[1];
+                    handleRowFile(e.clipboardData.files, id); 
+                }
+            }
+        });
+
+        function generateTracking() {
+            const rows = document.querySelectorAll('.word-row');
+            let dataList = [];
+
+            rows.forEach(row => {
+                const id = row.id.split('_')[1];
+                let answer = row.querySelector('.input-answer').value.replace(/\s+/g, '');
+                let previewImg = row.querySelector('.row-preview');
+                let imgUrl = (previewImg && previewImg.style.display !== 'none') ? previewImg.src : null;
+
+                if (answer) {
+                    if (!imgUrl) { alert(`"${answer}"에 해당하는 사진이 없습니다.`); return; }
+                    if (answer.length > 3) { alert(`"${answer}" - 공간 확보를 위해 정답은 최대 3글자까지만 허용됩니다.`); return; }
+                    dataList.push({ answer: answer, imgUrl: imgUrl });
+                }
+            });
+
+            if (dataList.length < 2) { alert("최소 2개의 문항을 완성해주세요."); return; }
+
+            let shuffledData = [...dataList].map((item, idx) => ({ ...item, originalIndex: idx }));
+            for (let i = shuffledData.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffledData[i], shuffledData[j]] = [shuffledData[j], shuffledData[i]];
+            }
+
+            const colLeft = document.getElementById('colLeft');
+            const colRight = document.getElementById('colRight');
+            colLeft.innerHTML = ''; colRight.innerHTML = '';
+
+            dataList.forEach((data, index) => {
+                const leftBox = document.createElement('div');
+                leftBox.className = 'item-box left-item';
+                leftBox.innerHTML = `<img src="${data.imgUrl}"><div class="node-left"></div>`;
+                colLeft.appendChild(leftBox);
+
+                const rightData = shuffledData[index];
+                const rightBox = document.createElement('div');
+                rightBox.className = 'item-box right-item';
+                
+                let wordLen = rightData.answer.length;
+                let gridCols, boxWidth, boxHeight;
+
+                if (wordLen === 1) { gridCols = '1fr 1fr'; boxWidth = boxHeight = '2.2cm'; } 
+                else if (wordLen === 2) { gridCols = '1fr 1fr'; boxWidth = boxHeight = '2.2cm'; } 
+                else { gridCols = '1fr 1fr 1fr'; boxWidth = boxHeight = '1.5cm'; }
+
+                let writeHTML = `<div class="write-container" style="grid-template-columns: ${gridCols};">`;
+                let totalBoxes = (wordLen === 1) ? 4 : (wordLen * 2);
+                
+                for(let i=0; i<totalBoxes; i++) { writeHTML += `<div class="write-box" style="width:${boxWidth}; height:${boxHeight};"></div>`; }
+                writeHTML += `</div><div class="node-right"></div>`;
+                
+                rightBox.dataset.targetIndex = rightData.originalIndex;
+                rightBox.innerHTML = writeHTML;
+                colRight.appendChild(rightBox);
+            });
+
+            document.getElementById('printActionArea').style.display = 'block';
+            document.getElementById('outputArea').style.display = 'flex';
+
+            setTimeout(() => { drawLines(dataList.length); }, 150);
+            window.scrollTo({ top: document.getElementById('printActionArea').offsetTop, behavior: 'smooth' });
+        }
+
+        function drawLines(count) {
+            const svg = document.getElementById('lineCanvas');
+            svg.innerHTML = '';
+            
+            const leftItems = document.querySelectorAll('.left-item');
+            const rightItems = document.querySelectorAll('.right-item');
+            const svgRect = svg.getBoundingClientRect();
+            
+            const difficulty = document.getElementById('lineDifficulty').value;
+            const tangleLevel = parseInt(document.getElementById('tangleLevel').value);
+            
+            const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6'];
+            const thicknesses = [2, 4, 6, 8, 10];
+            const patterns = ['', '5,5', '10,10', '15,5,5,5', '20,10'];
+
+            for (let i = 0; i < count; i++) {
+                const leftNode = leftItems[i].querySelector('.node-left');
+                const lRect = leftNode.getBoundingClientRect();
+                const startX = 0; 
+                const startY = lRect.top + (lRect.height / 2) - svgRect.top;
+
+                let targetRightItem;
+                for (let j = 0; j < count; j++) {
+                    if (parseInt(rightItems[j].dataset.targetIndex) === i) { targetRightItem = rightItems[j]; break; }
+                }
+                
+                const rightNode = targetRightItem.querySelector('.node-right');
+                const rRect = rightNode.getBoundingClientRect();
+                const endX = svgRect.width; 
+                const endY = rRect.top + (rRect.height / 2) - svgRect.top;
+
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                let pathData = `M ${startX} ${startY}`;
+
+                if (tangleLevel === 1) {
+                    const cp1x = endX * 0.4;
+                    const cp1y = startY + (Math.random() * 100 - 50);
+                    const cp2x = endX * 0.6;
+                    const cp2y = endY + (Math.random() * 100 - 50);
+                    pathData += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${endX} ${endY}`;
+                } else {
+                    let numPoints = (tangleLevel === 2) ? 8 : 12; 
+                    let points = [];
+                    
+                    for (let k = 1; k <= numPoints; k++) {
+                        let t = k / (numPoints + 1);
+                        let baseX = startX + (endX - startX) * t;
+                        let baseY = startY + (endY - startY) * t;
+
+                        let rangeX = (tangleLevel === 2) ? 60 : 100; 
+                        let rangeY = (tangleLevel === 2) ? 90 : 150; 
+
+                        let offsetX = (Math.random() - 0.5) * rangeX * 2;
+                        let offsetY = (Math.random() - 0.5) * rangeY * 2;
+
+                        let dampen = Math.sin(t * Math.PI); 
+                        
+                        let rawX = baseX + (offsetX * dampen);
+                        let rawY = baseY + (offsetY * dampen);
+                        
+                        let safeX = Math.max(5, Math.min(svgRect.width - 5, rawX));
+                        let safeY = Math.max(5, Math.min(svgRect.height - 5, rawY));
+                        
+                        points.push({ x: safeX, y: safeY });
+                    }
+                    points.push({x: endX, y: endY});
+
+                    let currentX = startX;
+                    let currentY = startY;
+
+                    for (let p = 0; p < points.length; p++) {
+                        let pt = points[p];
+                        
+                        let rawCp1x = currentX + (Math.random() * 80 - 40) + (pt.x - currentX) * 0.3;
+                        let rawCp1y = currentY + (Math.random() * 120 - 60);
+                        let rawCp2x = pt.x - (Math.random() * 80 - 40) - (pt.x - currentX) * 0.3;
+                        let rawCp2y = pt.y + (Math.random() * 120 - 60);
+
+                        if(tangleLevel === 3 && Math.random() > 0.5) {
+                            rawCp1x -= 80; rawCp2x += 80;
+                        }
+
+                        let cp1x = Math.max(0, Math.min(svgRect.width, rawCp1x));
+                        let cp1y = Math.max(0, Math.min(svgRect.height, rawCp1y));
+                        let cp2x = Math.max(0, Math.min(svgRect.width, rawCp2x));
+                        let cp2y = Math.max(0, Math.min(svgRect.height, rawCp2y));
+
+                        pathData += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${pt.x} ${pt.y}`;
+                        currentX = pt.x;
+                        currentY = pt.y;
+                    }
+                }
+                
+                path.setAttribute('d', pathData);
+                path.setAttribute('fill', 'none');
+
+                if (difficulty === 'color') {
+                    path.setAttribute('stroke', colors[i % colors.length]);
+                    path.setAttribute('stroke-width', '4');
+                    if (tangleLevel === 3) path.setAttribute('stroke-opacity', '0.8'); 
+                } else if (difficulty === 'thickness') {
+                    path.setAttribute('stroke', '#333');
+                    path.setAttribute('stroke-width', thicknesses[i % thicknesses.length]);
+                    if (tangleLevel === 3) path.setAttribute('stroke-opacity', '0.7');
+                } else if (difficulty === 'pattern') {
+                    path.setAttribute('stroke', '#333');
+                    path.setAttribute('stroke-width', '3');
+                    if (patterns[i % patterns.length] !== '') path.setAttribute('stroke-dasharray', patterns[i % patterns.length]);
+                } else { 
+                    path.setAttribute('stroke', '#333');
+                    path.setAttribute('stroke-width', '3');
+                }
+
+                svg.appendChild(path);
+            }
+        }
+    </script>
+</body>
+</html>
